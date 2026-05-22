@@ -14,6 +14,9 @@ import {
   getFirestore,
   collection,
   addDoc,
+  deleteDoc,
+  getDocs,
+  doc,
   query,
   orderBy,
   onSnapshot,
@@ -93,7 +96,17 @@ export default function App() {
       alert(error.message);
     }
   };
+  const deleteAllMessages = async () => {
+    const snapshot = await getDocs(
+      collection(db, "messages")
+    );
 
+  snapshot.forEach(async (messageDoc) => {
+    await deleteDoc(
+      doc(db, "messages", messageDoc.id)
+      );
+    });
+  };
   const sendMessage = async () => {
     if (!message.trim()) return;
 
@@ -133,6 +146,21 @@ export default function App() {
             }}
           >
             <h1>👻 SnapWeb Chat</h1>
+
+            <button
+              onClick={deleteAllMessages}
+              style={{
+                adding: "10px",
+                background: "red",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                marginBottom: "10px",
+                cursor: "pointer",
+              }}
+            >
+              🗑 Delete Chats
+            </button>
 
             <button
               onClick={() => signOut(auth)}
