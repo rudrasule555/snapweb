@@ -8,6 +8,7 @@ import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 
 import {
@@ -20,6 +21,7 @@ import {
   query,
   orderBy,
   onSnapshot,
+  setDoc,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -46,10 +48,25 @@ export default function App() {
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  
+  const setOnlineStatus = async (status) => {
+    if (!user) return;
+
+    await setDoc(
+      doc(db, "status", user.uid),
+      {
+        email: user.email,
+        online: status,
+      }
+    );
+  };
 
   useEffect(() => {
     onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        setOnlineStatus(true);
+      }
     });
 
     const q = query(
@@ -163,7 +180,10 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => signOut(auth)}
+              onClick={async () => {
+                await setOnlineStatus(false);
+                signOut(auth);
+              }}
               style={{
                 padding: "10px",
                 background: "black",
@@ -201,7 +221,9 @@ export default function App() {
                   marginBottom: "10px",
                 }}
               >
-                <strong>{msg.user}</strong>
+              <strong>
+                🟢 {msg.user}
+              </strong>
                 <p>{msg.text}</p>
               </div>
             ))}
