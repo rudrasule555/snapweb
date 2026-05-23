@@ -53,6 +53,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [typing, setTyping] = useState(false);
   const [typingUser, setTypingUser] = useState("");
+  const [liveText, setLiveText] = useState("");
   
   const setOnlineStatus = async (status) => {
     if (!user) return;
@@ -113,7 +114,7 @@ export default function App() {
       unsubscribe();
       unsubscribeTyping();
     };
-  }, []);
+  }, [user]);
 
   const signup = async () => {
     try {
@@ -213,7 +214,7 @@ export default function App() {
             <button
               onClick={deleteAllMessages}
               style={{
-                adding: "10px",
+                padding: "10px",
                 background: "red",
                 color: "white",
                 border: "none",
@@ -297,7 +298,10 @@ export default function App() {
                   {
                     user: user.email,
                     text: e.target.value,
-                    targetUser: "naruto@gmail.com",
+                    targetUser:
+                      user.email === "naruto@gmail.com"
+                        ? "hinata@gmail.com"
+                        : "naruto@gmail.com",
                   }
                 );
 
