@@ -77,7 +77,7 @@ export default function App() {
 
     const q = query(
       collection(db, "messages"),
-      orderBy("createdAt")
+      orderBy("createdAt", "asc")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -159,7 +159,9 @@ export default function App() {
     await addDoc(collection(db, "messages"), {
       text: message,
       user: user.email,
+
       createdAt: Date.now(),
+      
       time: new Date().toLocaleString(),
     });
 
@@ -272,7 +274,7 @@ export default function App() {
                 <p>{msg.text}</p>
 
               <small style={{ color: "gray" }}>
-                {msg.time || new Date(msg.createdAt).toLocaleString()}
+                {msg.time}
               </small>
               </div>
             ))}
