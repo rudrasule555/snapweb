@@ -21,6 +21,8 @@ import {
   query,
   orderBy,
   onSnapshot,
+  doc,
+  getDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
@@ -51,6 +53,7 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [typing, setTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState("");
   
   const setOnlineStatus = async (status) => {
     if (!user) return;
@@ -87,7 +90,30 @@ export default function App() {
       );
     });
 
-    return () => unsubscribe();
+    const unsubscribeTyping = onSnapshot(
+      doc(db, "typing", "status"),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          if (
+            data.user !== user?.email &&
+            data.targetUser === user?.email
+          ) {
+            setTypingUser(data.user);
+            setLiveText(data.text);
+          } else {
+            setTypingUser("");
+            setLiveText("");
+          }
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+      unsubscribeTyping();
+    };
   }, []);
 
   const signup = async () => {
@@ -159,10 +185,19 @@ export default function App() {
             padding: "20px",
           }}
         >
-          {typing && (
-            <p style={{ color: "gray" }}>
-              ✍️ Typing...
-            </p>
+          {typingUser && (
+            <div
+              style={{
+                background: "#f1f1f1",
+                padding: "10px",
+                borderRadius: "10px",
+                marginBottom: "10px",
+              }}
+            >
+              <strong>✍️ {typingUser}</strong>
+
+              <p>{liveText}</p>
+            </div>
           )}
           <div
             style={{
@@ -252,12 +287,27 @@ export default function App() {
           >
             <input
               value={message}
-              onChange={(e) => {
+              onChange={async (e) => {
                 setMessage(e.target.value);
-                setTyping(true);
 
-                setTimeout(() => {
-                  setTyping(false);
+                await setDoc(
+                  doc(db, "typing", "status"),
+                  {
+                    user: user.email,
+                    text: e.target.value,
+                    targetUser: "naruto@gmail.com",
+                  }
+                );
+
+                setTimeout(async () => {
+                  await setDoc(
+                    doc(db, "typing", "status"),
+                    {
+                      user: "",
+                      text: "",
+                      targetUser: "",
+                    }
+                  );
                 }, 1000);
               }}
               placeholder="Type message..."
