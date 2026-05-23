@@ -22,6 +22,8 @@ import {
   orderBy,
   onSnapshot,
   setDoc,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -48,6 +50,7 @@ export default function App() {
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [typing, setTyping] = useState(false);
   
   const setOnlineStatus = async (status) => {
     if (!user) return;
@@ -57,6 +60,7 @@ export default function App() {
       {
         email: user.email,
         online: status,
+        lastSeen: new Date().toLocaleString(),
       }
     );
   };
@@ -130,7 +134,7 @@ export default function App() {
     await addDoc(collection(db, "messages"), {
       text: message,
       user: user.email,
-      createdAt: Date.now(),
+      createdAt: Date.now().toLocaleTimeString(),
     });
 
     setMessage("");
@@ -155,6 +159,11 @@ export default function App() {
             padding: "20px",
           }}
         >
+          {typing && (
+            <p style={{ color: "gray" }}>
+              ✍️ Typing...
+            </p>
+          )}
           <div
             style={{
               display: "flex",
@@ -182,6 +191,7 @@ export default function App() {
             <button
               onClick={async () => {
                 await setOnlineStatus(false);
+                window.location.reload();
                 signOut(auth);
               }}
               style={{
@@ -225,6 +235,10 @@ export default function App() {
                 🟢 {msg.user}
               </strong>
                 <p>{msg.text}</p>
+
+              <small style={{ color: "gray" }}>
+                {msg.createdAt}
+              </small>
               </div>
             ))}
           </div>
@@ -238,7 +252,14 @@ export default function App() {
           >
             <input
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                setTyping(true);
+
+                setTimeout(() => {
+                  setTyping(false);
+                }, 1000);
+              }}
               placeholder="Type message..."
               style={{
                 flex: 1,
