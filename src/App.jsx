@@ -159,7 +159,8 @@ export default function App() {
     await addDoc(collection(db, "messages"), {
       text: message,
       user: user.email,
-      createdAt: new Date().toLocaleString(),
+      createdAt: Date.now(),
+      time: new Date().toLocaleString(),
     });
 
     setMessage("");
@@ -271,7 +272,7 @@ export default function App() {
                 <p>{msg.text}</p>
 
               <small style={{ color: "gray" }}>
-                {msg.createdAt}
+                {msg.time}
               </small>
               </div>
             ))}
