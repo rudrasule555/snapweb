@@ -272,7 +272,7 @@ export default function App() {
                 <p>{msg.text}</p>
 
               <small style={{ color: "gray" }}>
-                {msg.time}
+                {msg.time || new Date(msg.createdAt).toLocaleString()}
               </small>
               </div>
             ))}
