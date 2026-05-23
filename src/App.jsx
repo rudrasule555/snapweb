@@ -134,7 +134,7 @@ export default function App() {
     await addDoc(collection(db, "messages"), {
       text: message,
       user: user.email,
-      createdAt: Date.now().toLocaleTimeString(),
+      createdAt: new Date().toLocaleString(),
     });
 
     setMessage("");
