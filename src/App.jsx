@@ -32,12 +32,12 @@ import {
 } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDIsjMGWtzjjFgjVFiF1fcVU0RNS-i63OY",
+  authDomain: "rudra-sule.firebaseapp.com",
+  projectId: "rudra-sule",
+  storageBucket: "rudra-sule.firebasestorage.app",
+  messagingSenderId: "338468684478",
+  appId: "1:338468684478:web:105b997840f1ce09b654ef",
 };
 
 const app = initializeApp(firebaseConfig);
