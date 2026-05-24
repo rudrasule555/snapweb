@@ -75,7 +75,7 @@ export default function App() {
   };
 
   const setOnlineStatus = async (status) => {
-    if (!user) return;
+    if (!user || !selectedUser) return;
 
     await setDoc(
       doc(db, "status", user.email),
@@ -383,7 +383,8 @@ export default function App() {
                     src={msg.imageUrl}
                     alt="sent"
                     style={{
-                      width: "220px",
+                      maxWidth: "220px",
+                      width: "100%",
                       borderRadius: "10px",
                       marginTop: "10px",
                     }}
@@ -461,6 +462,7 @@ export default function App() {
             />
 
             <button
+              disabled={!selectedUser}
               onClick={sendMessage}
               style={{
                 padding: "12px 20px",
