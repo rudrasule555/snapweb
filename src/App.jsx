@@ -63,7 +63,7 @@ export default function App() {
   const [liveText, setLiveText] = useState("");
 
   const [selectedUser, setSelectedUser] =
-    useState("hinata@gmail.com");
+    useState("");
 
   const [allUsers] = useState([
     "hinata@gmail.com",
