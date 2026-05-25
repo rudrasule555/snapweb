@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import { initializeApp } from "firebase/app";
 
 import {
@@ -8,20 +7,23 @@ import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 
 import {
   getFirestore,
   collection,
   addDoc,
+  deleteDoc,
+  getDocs,
   query,
   orderBy,
   onSnapshot,
   doc,
+  getDoc,
   setDoc,
-  getDocs,
-  deleteDoc,
-  where,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import {
@@ -32,12 +34,12 @@ import {
 } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDIsjMGWtzjjFgjVFiF1fcVU0RNS-i63OY",
-  authDomain: "rudra-sule.firebaseapp.com",
-  projectId: "rudra-sule",
-  storageBucket: "rudra-sule.firebasestorage.app",
-  messagingSenderId: "338468684478",
-  appId: "1:338468684478:web:105b997840f1ce09b654ef",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -49,92 +51,62 @@ const storage = getStorage(app);
 export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [user, setUser] = useState(null);
 
   const [message, setMessage] = useState("");
-
   const [messages, setMessages] = useState([]);
 
   const [image, setImage] = useState(null);
 
   const [typingUser, setTypingUser] = useState("");
-
   const [liveText, setLiveText] = useState("");
 
-  const [selectedUser, setSelectedUser] =
-    useState("");
-
-  const [allUsers] = useState([
-    "hinata@gmail.com",
-    "naruto@gmail.com",
-  ]);
-
-  const getChatId = (user1, user2) => {
-    return [user1, user2].sort().join("_");
-  };
-
+  // ONLINE STATUS
   const setOnlineStatus = async (status) => {
-    if (!user || !selectedUser) return;
-
-    await setDoc(
-      doc(db, "status", user.email),
-      {
-        email: user.email,
-        online: status,
-        lastSeen: new Date().toLocaleString(),
-      }
-    );
-  };
-
-  useEffect(() => {
-    const unsubscribeAuth =
-      onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-
-        if (currentUser) {
-          setOnlineStatus(true);
-        }
-      });
-
-    return () => unsubscribeAuth();
-  }, []);
-
-  useEffect(() => {
     if (!user) return;
 
-    const chatId = getChatId(
-      user.email,
-      selectedUser
-    );
+    await setDoc(doc(db, "status", user.uid), {
+      email: user.email,
+      online: status,
+      lastSeen: new Date().toLocaleString(),
+    });
+  };
+
+  // AUTH + REALTIME MESSAGES
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+
+      if (currentUser) {
+        setOnlineStatus(true);
+      }
+    });
 
     const q = query(
       collection(db, "messages"),
-      where("chatId", "==", chatId),
       orderBy("createdAt", "asc")
     );
 
-    const unsubscribeMessages = onSnapshot(
-      q,
-      (snapshot) => {
-        setMessages(
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-        );
-      }
-    );
+    const unsubscribeMessages = onSnapshot(q, (snapshot) => {
+      setMessages(
+        snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+      );
+    });
 
     const unsubscribeTyping = onSnapshot(
-      doc(db, "typing", chatId),
+      doc(db, "typing", "status"),
       (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
 
           if (
-            data.user !== user.email &&
-            data.targetUser === user.email
+            data.user !== user?.email &&
+            data.targetUser === user?.email
           ) {
             setTypingUser(data.user);
             setLiveText(data.text);
@@ -147,11 +119,13 @@ export default function App() {
     );
 
     return () => {
+      unsubscribeAuth();
       unsubscribeMessages();
       unsubscribeTyping();
     };
-  }, [user, selectedUser]);
+  }, [user]);
 
+  // SIGNUP
   const signup = async () => {
     try {
       await createUserWithEmailAndPassword(
@@ -166,6 +140,7 @@ export default function App() {
     }
   };
 
+  // LOGIN
   const login = async () => {
     try {
       await signInWithEmailAndPassword(
@@ -180,51 +155,7 @@ export default function App() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!message.trim() && !image) return;
-
-    const chatId = getChatId(
-      user.email,
-      selectedUser
-    );
-
-    let imageUrl = "";
-
-    if (image) {
-      const imageRef = ref(
-        storage,
-        `images/${Date.now()}-${image.name}`
-      );
-
-      await uploadBytes(imageRef, image);
-
-      imageUrl =
-        await getDownloadURL(imageRef);
-    }
-
-    await addDoc(collection(db, "messages"), {
-      text: message,
-      imageUrl,
-      user: user.email,
-      receiver: selectedUser,
-      chatId,
-
-      createdAt: Date.now(),
-
-      time: new Date().toLocaleString(),
-    });
-
-    setMessage("");
-
-    setImage(null);
-
-    await setDoc(doc(db, "typing", chatId), {
-      user: "",
-      text: "",
-      targetUser: "",
-    });
-  };
-
+  // DELETE ALL MESSAGES
   const deleteAllMessages = async () => {
     const snapshot = await getDocs(
       collection(db, "messages")
@@ -237,101 +168,78 @@ export default function App() {
     });
   };
 
+  // SEND IMAGE
+  const sendImage = async () => {
+    if (!image) return;
+
+    const imageRef = ref(
+      storage,
+      `images/${Date.now()}-${image.name}`
+    );
+
+    await uploadBytes(imageRef, image);
+
+    const imageUrl = await getDownloadURL(imageRef);
+
+    await addDoc(collection(db, "messages"), {
+      imageUrl,
+      user: user.email,
+      createdAt: Date.now(),
+      time: new Date().toLocaleString(),
+    });
+
+    setImage(null);
+  };
+
+  // SEND MESSAGE
+  const sendMessage = async () => {
+    if (!message.trim() && !image) return;
+
+    let imageUrl = "";
+
+    if (image) {
+      const imageRef = ref(
+        storage,
+        `images/${Date.now()}-${image.name}`
+      );
+
+      await uploadBytes(imageRef, image);
+
+      imageUrl = await getDownloadURL(imageRef);
+    }
+
+    await addDoc(collection(db, "messages"), {
+      text: message,
+      imageUrl,
+      user: user.email,
+      createdAt: Date.now(),
+      time: new Date().toLocaleString(),
+    });
+
+    setMessage("");
+    setImage(null);
+  };
+
+  // CHAT SCREEN
   if (user) {
     return (
       <div
         style={{
           minHeight: "100vh",
           background: "#FFFC00",
-          display: "flex",
+          padding: "20px",
           fontFamily: "Arial",
         }}
       >
-        {/* Sidebar */}
-
         <div
           style={{
-            width: "250px",
+            maxWidth: "700px",
+            margin: "auto",
             background: "white",
-            padding: "20px",
-            borderRight: "2px solid #ddd",
-          }}
-        >
-          <h2>💬 Chats</h2>
-
-          {allUsers
-            .filter((u) => u !== user.email)
-            .map((u) => (
-              <div
-                key={u}
-                onClick={() =>
-                  setSelectedUser(u)
-                }
-                style={{
-                  padding: "12px",
-                  marginTop: "10px",
-                  background:
-                    selectedUser === u
-                      ? "#FFFC00"
-                      : "#f1f1f1",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                }}
-              >
-                👤 {u}
-              </div>
-            ))}
-
-          <button
-            onClick={deleteAllMessages}
-            style={{
-              width: "100%",
-              marginTop: "20px",
-              padding: "10px",
-              background: "red",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-            }}
-          >
-            🗑 Delete Chats
-          </button>
-
-          <button
-            onClick={async () => {
-              await setOnlineStatus(false);
-              signOut(auth);
-            }}
-            style={{
-              width: "100%",
-              marginTop: "10px",
-              padding: "10px",
-              background: "black",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-            }}
-          >
-            Logout
-          </button>
-        </div>
-
-        {/* Chat Area */}
-
-        <div
-          style={{
-            flex: 1,
+            borderRadius: "20px",
             padding: "20px",
           }}
         >
-          <h1>
-            👻 Chat with {selectedUser}
-          </h1>
-
-          <p>
-            Logged in as: {user.email}
-          </p>
-
           {typingUser && (
             <div
               style={{
@@ -341,21 +249,63 @@ export default function App() {
                 marginBottom: "10px",
               }}
             >
-              <strong>
-                ✍️ {typingUser}
-              </strong>
-
+              <strong>✍️ {typingUser}</strong>
               <p>{liveText}</p>
             </div>
           )}
 
           <div
             style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h1>👻 SnapWeb Chat</h1>
+
+            <button
+              onClick={deleteAllMessages}
+              style={{
+                padding: "10px",
+                background: "red",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                marginBottom: "10px",
+                cursor: "pointer",
+              }}
+            >
+              🗑 Delete Chats
+            </button>
+
+            <button
+              onClick={async () => {
+                await setOnlineStatus(false);
+                await signOut(auth);
+                window.location.reload();
+              }}
+              style={{
+                padding: "10px",
+                background: "black",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+              }}
+            >
+              Logout
+            </button>
+          </div>
+
+          <p>Logged in as: {user.email}</p>
+
+          <div
+            style={{
               height: "400px",
               overflowY: "scroll",
-              background: "white",
-              borderRadius: "20px",
-              padding: "20px",
+              border: "1px solid gray",
+              borderRadius: "10px",
+              padding: "10px",
+              marginTop: "20px",
             }}
           >
             {messages.map((msg) => (
@@ -366,15 +316,12 @@ export default function App() {
                     msg.user === user.email
                       ? "#FFFC00"
                       : "#f1f1f1",
-
                   padding: "10px",
                   borderRadius: "10px",
                   marginBottom: "10px",
                 }}
               >
-                <strong>
-                  🟢 {msg.user}
-                </strong>
+                <strong>🟢 {msg.user}</strong>
 
                 <p>{msg.text}</p>
 
@@ -383,28 +330,19 @@ export default function App() {
                     src={msg.imageUrl}
                     alt="sent"
                     style={{
-                      maxWidth: "220px",
-                      width: "100%",
+                      width: "200px",
                       borderRadius: "10px",
                       marginTop: "10px",
                     }}
                   />
                 )}
 
-                <br />
-
-                <small
-                  style={{
-                    color: "gray",
-                  }}
-                >
+                <small style={{ color: "gray" }}>
                   {msg.time}
                 </small>
               </div>
             ))}
           </div>
-
-          {/* Input */}
 
           <div
             style={{
@@ -418,24 +356,18 @@ export default function App() {
               onChange={async (e) => {
                 setMessage(e.target.value);
 
-                const chatId = getChatId(
-                  user.email,
-                  selectedUser
-                );
-
                 await setDoc(
-                  doc(db, "typing", chatId),
+                  doc(db, "typing", "status"),
                   {
                     user: user.email,
                     text: e.target.value,
-                    targetUser:
-                      selectedUser,
+                    targetUser: "naruto@gmail.com",
                   }
                 );
 
                 setTimeout(async () => {
                   await setDoc(
-                    doc(db, "typing", chatId),
+                    doc(db, "typing", "status"),
                     {
                       user: "",
                       text: "",
@@ -462,7 +394,6 @@ export default function App() {
             />
 
             <button
-              disabled={!selectedUser}
               onClick={sendMessage}
               style={{
                 padding: "12px 20px",
@@ -480,6 +411,7 @@ export default function App() {
     );
   }
 
+  // LOGIN SCREEN
   return (
     <div
       style={{
@@ -516,7 +448,7 @@ export default function App() {
 
         <input
           placeholder="Password"
-          type="password"
+          type={showPassword ? "text" : "password"}
           value={password}
           onChange={(e) =>
             setPassword(e.target.value)
@@ -527,6 +459,20 @@ export default function App() {
             marginTop: "10px",
           }}
         />
+
+        <button
+          onClick={() =>
+            setShowPassword(!showPassword)
+          }
+          style={{
+            marginTop: "10px",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+          }}
+        >
+          {showPassword ? "🙈 Hide" : "👁 Show"}
+        </button>
 
         <button
           onClick={signup}
