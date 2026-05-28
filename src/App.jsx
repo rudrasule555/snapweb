@@ -342,7 +342,10 @@ export default function App() {
                   {
                     user: user.email,
                     text: e.target.value,
-                    targetUser: "naruto@gmail.com",
+                    targetUser:
+                      user.email === "naruto@gmail.com"
+                        ? "hinata@gmail.com"
+                        : "naruto@gmail.com",
                   }
                 );
 
