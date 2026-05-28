@@ -20,10 +20,7 @@ import {
   orderBy,
   onSnapshot,
   doc,
-  getDoc,
   setDoc,
-  updateDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 
 import {
@@ -34,13 +31,13 @@ import {
 } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
+  apiKey: "AIzaSyDIsjMGWtzjjFgjVFiF1fcVU0RNS-i63OY",
+  authDomain: "rudra-sule.firebaseapp.com",
+  projectId: "rudra-sule",
+  storageBucket: "rudra-sule.firebasestorage.app",
+  messagingSenderId: "338468684478",
+  appId: "1:338468684478:web:105b997840f1ce09b654ef"
+}
 
 const app = initializeApp(firebaseConfig);
 
@@ -76,12 +73,19 @@ export default function App() {
 
   // AUTH + REALTIME MESSAGES
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
       if (currentUser) {
-        setOnlineStatus(true);
-      }
+        await setDoc(
+          doc(db, "status", currentUser.uid),
+          {
+            email: currentUser.email,
+            online: true,
+            lastSeen: new Date().toLocaleString(),
+          }
+        );
+      }   
     });
 
     const q = query(
@@ -166,29 +170,6 @@ export default function App() {
         doc(db, "messages", messageDoc.id)
       );
     });
-  };
-
-  // SEND IMAGE
-  const sendImage = async () => {
-    if (!image) return;
-
-    const imageRef = ref(
-      storage,
-      `images/${Date.now()}-${image.name}`
-    );
-
-    await uploadBytes(imageRef, image);
-
-    const imageUrl = await getDownloadURL(imageRef);
-
-    await addDoc(collection(db, "messages"), {
-      imageUrl,
-      user: user.email,
-      createdAt: Date.now(),
-      time: new Date().toLocaleString(),
-    });
-
-    setImage(null);
   };
 
   // SEND MESSAGE
